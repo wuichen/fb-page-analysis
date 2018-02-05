@@ -2,8 +2,9 @@ import React, { Component } from 'react';
 import logo from './logo.svg';
 import './App.css';
 import * as firebase from "firebase";
-import FB from 'fb';
+import FB from 'fb-es5';
 import { Icon, Table, Button, Input, AutoComplete } from 'antd';
+import {json2csv} from 'json-2-csv';
 
 const Option = AutoComplete.Option;
 
@@ -119,10 +120,37 @@ class App extends Component {
         this.setState({
           storedPage: storedPageArray,
           columnArray: columnArray
+        }, () => {
+          console.log(this.state)
         })
       }
     } catch (e) {
       console.log(e)
+      firebase.auth().signInWithPopup(provider).then((result) => {
+
+        // This gives you a Facebook Access Token. You can use it to access the Facebook API.
+        const token = result.credential.accessToken;
+
+        localStorage.setItem('user', JSON.stringify(result));
+
+        // The signed-in user info.
+        const user = result.user;
+        // ...
+        FB.setAccessToken(token);
+        this.setState({
+          user: user
+        }, () => this.setupPages())
+
+      }).catch(function(error) {
+        // Handle Errors here.
+        var errorCode = error.code;
+        var errorMessage = error.message;
+        // The email of the user's account used.
+        var email = error.email;
+        // The firebase.auth.AuthCredential type that was used.
+        var credential = error.credential;
+        // ...
+      });
     }
     
 
@@ -146,12 +174,9 @@ class App extends Component {
 
         localStorage.setItem('user', JSON.stringify(result));
 
-        // The signed-in user info.
-        const user = result.user;
-        // ...
         FB.setAccessToken(token);
         this.setState({
-          user: user
+          user: result
         }, () => this.setupPages())
 
       }).catch(function(error) {
@@ -207,6 +232,35 @@ class App extends Component {
     // })
   }
 
+  download() {
+    let data, filename, link;
+    let exportJson = this.state.storedPage.slice(0);
+    for (var i = exportJson.length - 1; i >= 0; i--) {
+      delete exportJson[i].about;
+      delete exportJson[i].id
+      delete exportJson[i].key
+      delete exportJson[i].likeHistory
+      delete exportJson[i].fan_count
+    }
+    json2csv(this.state.storedPage, (err, csv) => {
+      if (csv == null) return;
+
+      filename = 'export.csv';
+
+      if (!csv.match(/^data:text\/csv/i)) {
+          csv = 'data:text/csv;charset=utf-8,' + csv;
+      }
+      data = encodeURI(csv);
+
+      link = document.createElement('a');
+      link.setAttribute('href', data);
+      link.setAttribute('download', filename);
+      link.click();
+    }, {
+      checkSchemaDifferences: false
+    })
+  }
+
   render() {
     return (
       <div className='App'>
@@ -223,7 +277,9 @@ class App extends Component {
           onSelect={this.select.bind(this)}
         />
         <div className='resultTable'>
-          <Table columns={this.state.columnArray} dataSource={this.state.storedPage} />
+          <Button onClick={this.download.bind(this)}>Download CSV</Button>
+          <br /><br />
+          <Table scroll={{ x: 250 * this.state.storedPage.length }} columns={this.state.columnArray} dataSource={this.state.storedPage} />
         </div>
       </div>
     );

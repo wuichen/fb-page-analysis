@@ -4,8 +4,9 @@
   "private": true,
   "dependencies": {
     "antd": "^3.1.6",
-    "fb": "^2.0.0",
+    "fb-es5": "^2.0.0",
     "firebase": "^4.9.0",
+    "json-2-csv": "^2.1.2",
     "react": "^16.2.0",
     "react-dom": "^16.2.0",
     "react-scripts": "1.1.0"
