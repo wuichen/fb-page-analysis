@@ -4,7 +4,9 @@ import './App.css';
 import * as firebase from "firebase";
 import FB from 'fb-es5';
 import { Icon, Table, Button, Input, AutoComplete } from 'antd';
-import {json2csv} from 'json-2-csv';
+// import {json2csv} from 'json-2-csv';
+const json2csv = require('json2csv').parse;
+
 
 const Option = AutoComplete.Option;
 
@@ -35,6 +37,38 @@ class App extends Component {
       storedPage: [],
       columnArray: []
     };
+  }
+
+  onChangeOrder(name, e) {
+    const page = this.findPageByName(name)
+    page.order = parseInt(e.target.value)
+    this.setState({
+      storedPage: this.state.storedPage
+    })
+  }
+
+  submitOrder(name) {
+    // for (var i = this.state.storedPage.length - 1; i >= 0; i--) {
+    //   firebase.database().ref('users/' + this.state.user.user.uid + '/' + this.state.storedPage[i].id + '/order').set(1)
+    // }
+
+    const page = this.findPageByName(name)
+    if (Number.isInteger(page.order)) {
+      firebase.database().ref('users/' + this.state.user.user.uid + '/' + page.id).set(page).then(() => {
+        alert('submitted order!')
+        this.setupPages()
+      })
+    } else {
+      alert('input not number!')
+    }
+  }
+
+  findPageByName(name) {
+    for (var i = this.state.storedPage.length - 1; i >= 0; i--) {
+      if (this.state.storedPage[i].name === name) {
+        return this.state.storedPage[i]
+      }
+    }
   }
 
   async setupPages() {
@@ -90,19 +124,41 @@ class App extends Component {
         
         // make array unique
         dateArray = [ ...new Set(dateArray) ]
+        dateArray.sort(function(a,b){
+          // Turn your strings into dates, and then subtract them
+          // to get a value that is either negative, positive, or zero.
+          return new Date(a) - new Date(b);
+        });
         let columnArray = [{
           title: 'name',
           dataIndex: 'name',
-          key: 'name'
+          key: 'name',
+          width: 300,
+          render: (name) => <span><a onClick={this.remove.bind(this, name)}><Icon type="close" /></a>&nbsp;&nbsp;{name}</span>
+        }, {
+          title: 'order edit',
+          dataIndex: 'name',
+          key: 'name' + 'order',
+          width: 150,
+          render: (name) => <span className='order'><Input type='text' onChange={this.onChangeOrder.bind(this, name)}/><Button onClick={this.submitOrder.bind(this, name)}>submit</Button></span>
+        }, {
+          title: 'order',
+          dataIndex: 'order',
+          key: Math.floor(Math.random() * 2000) + 'order',
+          width: 150,
+          // render: (name) => <span className='order'><Input type='text' onChange={this.onChangeOrder.bind(this, name)}/><Button onClick={this.submitOrder.bind(this, name)}>submit</Button></span>
         }]
-        dateArray.sort().reverse()
+
         for (var i = dateArray.length - 1; i >= 0; i--) {
           columnArray.push({
             title: dateArray[i],
             dataIndex: dateArray[i],
-            key: dateArray[i]
+            key: dateArray[i],
+            width: 150
           })
         }
+
+
 
         const processedPageConnection = await firebase.database().ref('users/' + this.state.user.user.uid).once('value')
         const processedPageObject = processedPageConnection.val()
@@ -117,15 +173,17 @@ class App extends Component {
           }
           storedPageArray.push(page)
         }
+
+        storedPageArray.sort(function(a,b) {return (a.order > b.order) ? 1 : ((b.order > a.order) ? -1 : 0);} ); 
+
         this.setState({
           storedPage: storedPageArray,
           columnArray: columnArray
         }, () => {
-          console.log(this.state)
         })
       }
     } catch (e) {
-      console.log(e)
+
       firebase.auth().signInWithPopup(provider).then((result) => {
 
         // This gives you a Facebook Access Token. You can use it to access the Facebook API.
@@ -142,6 +200,7 @@ class App extends Component {
         }, () => this.setupPages())
 
       }).catch(function(error) {
+        console.log(error)
         // Handle Errors here.
         var errorCode = error.code;
         var errorMessage = error.message;
@@ -156,6 +215,17 @@ class App extends Component {
 
   }
 
+  remove(name) {
+    const page = this.findPageByName(name)
+
+    if (page) {
+      firebase.database().ref('users/' + this.state.user.user.uid).child(page.id).remove().then(() => {
+        alert('removed!!')
+      })
+    }
+
+  }
+
 
   componentDidMount() {
     const currentUser = JSON.parse(localStorage.getItem('user'));
@@ -163,7 +233,11 @@ class App extends Component {
       FB.setAccessToken(currentUser.credential.accessToken);
       this.setState({
         user: currentUser
-      }, () => this.setupPages())
+      }, () => {
+        firebase.database().ref('users/' + this.state.user.user.uid).on('value', (snapshot) => {
+          this.setupPages()
+        })
+      })
 
     } else {
 
@@ -177,9 +251,14 @@ class App extends Component {
         FB.setAccessToken(token);
         this.setState({
           user: result
-        }, () => this.setupPages())
+        }, () => {
+          firebase.database().ref('users/' + this.state.user.user.uid).on('value', (snapshot) => {
+            this.setupPages()
+          })
+        })
 
       }).catch(function(error) {
+        console.log(error)
         // Handle Errors here.
         var errorCode = error.code;
         var errorMessage = error.message;
@@ -202,7 +281,6 @@ class App extends Component {
         for (var i = 0; i < res.data.length; i++) {
           res.data[i].key = res.data[i].id
         }
-        console.log(res.data)
         this.setState({
           searchResult: res.data
         })
@@ -213,6 +291,8 @@ class App extends Component {
   select(value) {
 
     const selectedPage = this.state.searchResult.filter((result) => result.id === value)[0]
+    selectedPage.name.replace(/,/g, ' ')
+    selectedPage.order = 0
     selectedPage.likeHistory = {}
     selectedPage.likeHistory[new Date().toLocaleDateString().replace(/\//g,'-')] = selectedPage.fan_count;
 
@@ -225,24 +305,24 @@ class App extends Component {
       }
       this.setupPages()
     });
-
-
-    // this.setState({
-    //   storedPage: this.state.storedPage.concat(this.state.searchResult.filter((result) => result.id === value))
-    // })
   }
 
   download() {
     let data, filename, link;
-    let exportJson = this.state.storedPage.slice(0);
-    for (var i = exportJson.length - 1; i >= 0; i--) {
-      delete exportJson[i].about;
-      delete exportJson[i].id
-      delete exportJson[i].key
-      delete exportJson[i].likeHistory
-      delete exportJson[i].fan_count
+
+    let columns = ['order', 'name']
+
+    for (var i = 3; i < this.state.columnArray.length; i++) {
+      columns.push(this.state.columnArray[i].title)
     }
-    json2csv(this.state.storedPage, (err, csv) => {
+
+    const opts = { 
+      fields: columns
+    };
+     console.log(opts)
+    try {
+      let csv = json2csv(this.state.storedPage, opts);
+      console.log(csv);
       if (csv == null) return;
 
       filename = 'export.csv';
@@ -256,9 +336,11 @@ class App extends Component {
       link.setAttribute('href', data);
       link.setAttribute('download', filename);
       link.click();
-    }, {
-      checkSchemaDifferences: false
-    })
+
+
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   render() {
@@ -279,7 +361,7 @@ class App extends Component {
         <div className='resultTable'>
           <Button onClick={this.download.bind(this)}>Download CSV</Button>
           <br /><br />
-          <Table scroll={{ x: 250 * this.state.storedPage.length }} columns={this.state.columnArray} dataSource={this.state.storedPage} />
+          <Table scroll={{ x: 150 * this.state.columnArray.length }} columns={this.state.columnArray} dataSource={this.state.storedPage} />
         </div>
       </div>
     );

@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "fb-page-analysis"
+    "default": "fb-page-analysis",
+    "fb": "fb-page-analysis"
   }
 }
