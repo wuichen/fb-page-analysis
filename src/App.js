@@ -47,6 +47,24 @@ class App extends Component {
     })
   }
 
+  onChangeAnnotation(id, e) {
+    const page = this.findPageById(id)
+    page.annotation = e.target.value
+    this.setState({
+      storedPage: this.state.storedPage
+    })
+  }
+
+  submitAnnotation(id) {
+    const page = this.findPageById(id)
+
+    firebase.database().ref('users/' + this.state.user.user.uid + '/' + page.id).set(page).then(() => {
+      alert('submitted annotation!')
+      this.setupPages()
+    })
+
+  }
+
   submitOrder(name) {
     // for (var i = this.state.storedPage.length - 1; i >= 0; i--) {
     //   firebase.database().ref('users/' + this.state.user.user.uid + '/' + this.state.storedPage[i].id + '/order').set(1)
@@ -66,6 +84,14 @@ class App extends Component {
   findPageByName(name) {
     for (var i = this.state.storedPage.length - 1; i >= 0; i--) {
       if (this.state.storedPage[i].name === name) {
+        return this.state.storedPage[i]
+      }
+    }
+  }
+
+  findPageById(id) {
+    for (var i = this.state.storedPage.length - 1; i >= 0; i--) {
+      if (this.state.storedPage[i].id === id) {
         return this.state.storedPage[i]
       }
     }
@@ -147,17 +173,38 @@ class App extends Component {
           key: Math.floor(Math.random() * 2000) + 'order',
           width: 150,
           // render: (name) => <span className='order'><Input type='text' onChange={this.onChangeOrder.bind(this, name)}/><Button onClick={this.submitOrder.bind(this, name)}>submit</Button></span>
+        }, {
+          title: 'annotation edit',
+          dataIndex: 'id',
+          key: 'id' + 'annotation',
+          width: 150,
+          render: (id) => <span className='annotation'><Input type='text' onChange={this.onChangeAnnotation.bind(this, id)}/><Button onClick={this.submitAnnotation.bind(this, id)}>submit</Button></span>
+        }, {
+          title: 'annotation',
+          dataIndex: 'annotation',
+          key: Math.floor(Math.random() * 2000) + 'annotation',
+          width: 150,
+          // render: (name) => <span className='order'><Input type='text' onChange={this.onChangeOrder.bind(this, name)}/><Button onClick={this.submitOrder.bind(this, name)}>submit</Button></span>
         }]
 
-        for (var i = dateArray.length - 1; i >= 0; i--) {
-          columnArray.push({
-            title: dateArray[i],
-            dataIndex: dateArray[i],
-            key: dateArray[i],
-            width: 150
-          })
+        // for (var i = dateArray.length - 1; i >= 0; i--) {
+        //   columnArray.push({
+        //     title: dateArray[i],
+        //     dataIndex: dateArray[i],
+        //     key: dateArray[i],
+        //     width: 150
+        //   })
+        // }
+        for (var i = dateArray.length - 1; i >= dateArray.length - 11; i--) {
+          if (dateArray[i]) {
+            columnArray.push({
+              title: dateArray[i],
+              dataIndex: dateArray[i],
+              key: dateArray[i],
+              width: 150
+            })
+          }
         }
-
 
 
         const processedPageConnection = await firebase.database().ref('users/' + this.state.user.user.uid).once('value')
