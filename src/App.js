@@ -3,7 +3,7 @@ import logo from './logo.svg';
 import './App.css';
 import * as firebase from "firebase";
 import FB from 'fb-es5';
-import { Icon, Table, Button, Input, AutoComplete } from 'antd';
+import { Icon, Table, Button, Input, AutoComplete, Switch } from 'antd';
 // import {json2csv} from 'json-2-csv';
 const json2csv = require('json2csv').parse;
 
@@ -35,7 +35,8 @@ class App extends Component {
       user: null,
       searchResult: [],
       storedPage: [],
-      columnArray: []
+      columnArray: [],
+      singleEdit: false
     };
   }
 
@@ -166,7 +167,7 @@ class App extends Component {
           dataIndex: 'name',
           key: 'name' + 'order',
           width: 150,
-          render: (name) => <span className='order'><Input type='text' onChange={this.onChangeOrder.bind(this, name)}/><Button onClick={this.submitOrder.bind(this, name)}>submit</Button></span>
+          render: (name) => <span className='order'><Input type='text' onChange={this.onChangeOrder.bind(this, name)}/>{this.state.singleEdit && <Button onClick={this.submitOrder.bind(this, name)}>submit</Button>}</span>
         }, {
           title: 'order',
           dataIndex: 'order',
@@ -178,7 +179,7 @@ class App extends Component {
           dataIndex: 'id',
           key: 'id' + 'annotation',
           width: 150,
-          render: (id) => <span className='annotation'><Input type='text' onChange={this.onChangeAnnotation.bind(this, id)}/><Button onClick={this.submitAnnotation.bind(this, id)}>submit</Button></span>
+          render: (id) => <span className='annotation'><Input type='text' onChange={this.onChangeAnnotation.bind(this, id)}/>{this.state.singleEdit && <Button onClick={this.submitAnnotation.bind(this, id)}>submit</Button>}</span>
         }, {
           title: 'annotation',
           dataIndex: 'annotation',
@@ -359,17 +360,15 @@ class App extends Component {
 
     let columns = ['order', 'name']
 
-    for (var i = 3; i < this.state.columnArray.length; i++) {
+    for (var i = 4; i < this.state.columnArray.length; i++) {
       columns.push(this.state.columnArray[i].title)
     }
 
     const opts = { 
       fields: columns
     };
-     console.log(opts)
     try {
       let csv = json2csv(this.state.storedPage, opts);
-      console.log(csv);
       if (csv == null) return;
 
       filename = 'export.csv';
@@ -390,6 +389,24 @@ class App extends Component {
     }
   }
 
+  submitAllChanges() {
+    let submitObject = {}
+    for (let page in this.state.storedPage) {
+      submitObject[this.state.storedPage[page].id] = this.state.storedPage[page]
+      
+    }
+    firebase.database().ref('users/' + this.state.user.user.uid).set(submitObject).then(() => {
+      alert('submitted order!')
+      this.setupPages()
+    })
+  }
+
+  onChangeSingleEdit() {
+    this.setState({
+      singleEdit: !this.state.singleEdit
+    })
+  }
+
   render() {
     return (
       <div className='App'>
@@ -406,8 +423,11 @@ class App extends Component {
           onSelect={this.select.bind(this)}
         />
         <div className='resultTable'>
-          <Button onClick={this.download.bind(this)}>Download CSV</Button>
+          <Button onClick={this.download.bind(this)}>Download CSV</Button>&nbsp;
+          <Button onClick={this.submitAllChanges.bind(this)}>Submit All Changes</Button>&nbsp;
+          <span>single edit</span>&nbsp;<Switch checked={this.state.singleEdit} onChange={this.onChangeSingleEdit.bind(this)} />
           <br /><br />
+
           <Table scroll={{ x: 150 * this.state.columnArray.length }} columns={this.state.columnArray} dataSource={this.state.storedPage} />
         </div>
       </div>
