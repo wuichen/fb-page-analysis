@@ -231,33 +231,33 @@ class App extends Component {
         })
       }
     } catch (e) {
+      console.log(e)
+      // firebase.auth().signInWithPopup(provider).then((result) => {
 
-      firebase.auth().signInWithPopup(provider).then((result) => {
+      //   // This gives you a Facebook Access Token. You can use it to access the Facebook API.
+      //   const token = result.credential.accessToken;
 
-        // This gives you a Facebook Access Token. You can use it to access the Facebook API.
-        const token = result.credential.accessToken;
+      //   localStorage.setItem('user', JSON.stringify(result));
 
-        localStorage.setItem('user', JSON.stringify(result));
+      //   // The signed-in user info.
+      //   const user = result.user;
+      //   // ...
+      //   FB.setAccessToken(token);
+      //   this.setState({
+      //     user: user
+      //   }, () => this.setupPages())
 
-        // The signed-in user info.
-        const user = result.user;
-        // ...
-        FB.setAccessToken(token);
-        this.setState({
-          user: user
-        }, () => this.setupPages())
-
-      }).catch(function(error) {
-        console.log(error)
-        // Handle Errors here.
-        var errorCode = error.code;
-        var errorMessage = error.message;
-        // The email of the user's account used.
-        var email = error.email;
-        // The firebase.auth.AuthCredential type that was used.
-        var credential = error.credential;
-        // ...
-      });
+      // }).catch(function(error) {
+      //   console.log(error)
+      //   // Handle Errors here.
+      //   var errorCode = error.code;
+      //   var errorMessage = error.message;
+      //   // The email of the user's account used.
+      //   var email = error.email;
+      //   // The firebase.auth.AuthCredential type that was used.
+      //   var credential = error.credential;
+      //   // ...
+      // });
     }
     
 
@@ -320,20 +320,31 @@ class App extends Component {
   }
 
   search(value) {
-    if (value.length > 3) {
-      FB.api('search?type=page&q=' + value, { fields: ['id','name', 'about', 'fan_count'] }, (res) => {
-        if(!res || res.error) {
-          console.log(!res ? 'error occurred' : res.error);
-          return;
-        }
-        for (var i = 0; i < res.data.length; i++) {
-          res.data[i].key = res.data[i].id
-        }
+    // old method for search fb fan page, the api from fb has been terminated
+    // if (value.length > 3) {
+    //   FB.api('search?type=page&q=' + value, { fields: ['id','name', 'about', 'fan_count'] }, (res) => {
+    //     if(!res || res.error) {
+    //       console.log(!res ? 'error occurred' : res.error);
+    //       return;
+    //     }
+    //     for (var i = 0; i < res.data.length; i++) {
+    //       res.data[i].key = res.data[i].id
+    //     }
+    //     this.setState({
+    //       searchResult: res.data
+    //     })
+    //   });
+    // }
+
+    // new method, change the search input box to a input box for user to directly input page id
+    FB.api(value, {fields: ['id','name', 'about', 'fan_count']}, (res) => {
+      if (!res.error) {
+        res.key = res.id
         this.setState({
-          searchResult: res.data
+          searchResult: [res]
         })
-      });
-    }
+      }
+    })
   }
 
   select(value) {
