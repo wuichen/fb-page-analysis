@@ -113,32 +113,32 @@ class App extends Component {
 
         let processFB = (page) => {
             return new Promise(resolve => {
-              FB.api(page.id, {fields: ['fan_count']}, (res) => {
-                if(!res || res.error) {
-                  console.log(!res ? 'error occurred' : res.error);
-                  firebase.database().ref('users/' + this.state.user.user.uid + '/' + page.id + '/likeHistory/' + new Date().toLocaleDateString().replace(/\//g, '-')).set(0)
-                  firebase.database.ref('error').push({
-                    user: this.state.user,
-                    page: page,
-                    date: new Date().toLocaleDateString().replace(/\//g, '-')
-                  })
-                  return;
-                }
-                const todaysCount = res.fan_count
+            	if (page.id) {
+	              	FB.api(page.id, {fields: ['fan_count']}, (res) => {
+	                if(!res || res.error) {
+	                  console.log(!res ? 'error occurred' : res.error);
 
-                // insert count and date to likehistory
-                firebase.database().ref('users/' + this.state.user.user.uid + '/' + page.id + '/likeHistory/' + new Date().toLocaleDateString().replace(/\//g, '-')).set(todaysCount, () => {
-                  // get likehistory
-                  firebase.database().ref('users/' + this.state.user.user.uid + '/' + page.id + '/likeHistory').once('value', (snapshot) => {
-                    for (const pageDate in snapshot.val()) {
-                      dateArray.push(pageDate)
-                      dateObjects[pageDate] = 0;
-                    }
-                    resolve()
-                  })
-                })
+	                  resolve()
+	                }
+	                const todaysCount = res.fan_count
 
-              })
+	                // insert count and date to likehistory
+	                firebase.database().ref('users/' + this.state.user.user.uid + '/' + page.id + '/likeHistory/' + new Date().toLocaleDateString().replace(/\//g, '-')).set(todaysCount, (a) => {
+	                  // get likehistory
+	                  firebase.database().ref('users/' + this.state.user.user.uid + '/' + page.id + '/likeHistory').once('value', (snapshot) => {
+	                    for (const pageDate in snapshot.val()) {
+	                      dateArray.push(pageDate)
+	                      dateObjects[pageDate] = 0;
+	                    }
+	                    resolve()
+	                  })
+	                })
+
+	              	})
+            	} else {
+            		resolve()
+            	}
+
             });
         };
         // map over forEach since it returns
@@ -147,8 +147,7 @@ class App extends Component {
 
         // we now have a promises array and we want to wait for it
 
-        await Promise.all(actions); // pass array of promises
-        
+        const result = await Promise.all(actions); // pass array of promises
         // make array unique
         dateArray = [ ...new Set(dateArray) ]
         dateArray.sort(function(a,b){
@@ -223,7 +222,6 @@ class App extends Component {
         }
 
         storedPageArray.sort(function(a,b) {return (a.order > b.order) ? 1 : ((b.order > a.order) ? -1 : 0);} ); 
-
         this.setState({
           storedPage: storedPageArray,
           columnArray: columnArray
